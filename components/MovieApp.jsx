@@ -4,6 +4,7 @@ import SearchForm from './SearchForm';
 import MovieList from './MovieList';
 import MovieModal from './MovieModal';
 import BackToTopButton from './BackToTopButton';
+import { fetchMovies, fetchMovieDetails } from '@/services/omdbService';
 
 const MovieSearchApp = () => {
     const [movies, setMovies] = useState([]);
@@ -14,7 +15,6 @@ const MovieSearchApp = () => {
     const [modalMovie, setModalMovie] = useState(null);
     const [showBackToTop, setShowBackToTop] = useState(false);
 
-    const apiKey = '5b2ded6c';
     const loaderRef = useRef();
 
     useEffect(() => {
@@ -29,22 +29,15 @@ const MovieSearchApp = () => {
 
     const loadMovies = async () => {
         setLoading(true);
-        try {
-            const response = await fetch(`http://www.omdbapi.com/?s=${query}&page=${currentPage}&apikey=${apiKey}`);
-            const data = await response.json();
-            if (data.Response === 'True') {
-                setMovies((prevMovies) => [...prevMovies, ...data.Search]);
-                setError('');
-            } else {
-                setError(data.Error);
-                if (currentPage === 1) setMovies([]);
-            }
-        } catch (error) {
-            console.error('Error loading movies:', error);
-            setError('Failed to fetch data');
-        } finally {
-            setLoading(false);
+        const { movies: newMovies, error: fetchError } = await fetchMovies(query, currentPage);
+        if (!fetchError) {
+            setMovies((prevMovies) => [...prevMovies, ...newMovies]);
+            setError('');
+        } else {
+            setError(fetchError);
+            if (currentPage === 1) setMovies([]);
         }
+        setLoading(false);
     };
 
     const handleSearchSubmit = (e) => {
@@ -59,13 +52,8 @@ const MovieSearchApp = () => {
     };
 
     const showDetails = async (id) => {
-        try {
-            const response = await fetch(`http://www.omdbapi.com/?i=${id}&apikey=${apiKey}`);
-            const data = await response.json();
-            if (data.Director !== 'N/A') setModalMovie(data);
-        } catch (error) {
-            console.error('Error fetching movie details:', error);
-        }
+        const movie = await fetchMovieDetails(id);
+        if (movie) setModalMovie(movie);
     };
 
     const closeModal = () => setModalMovie(null);
