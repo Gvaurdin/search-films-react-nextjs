@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import Observer from './Observer';
 import SearchForm from './SearchForm';
 import MovieList from './MovieList';
-import MovieModal from './MovieModal';
 import BackToTopButton from './BackToTopButton';
 import { fetchMovies, fetchMovieDetails } from '@/services/omdbService';
+
+const MovieModal = lazy(() => import('./MovieModal'));
 
 const MovieSearchApp = () => {
     const [movies, setMovies] = useState([]);
@@ -27,7 +28,7 @@ const MovieSearchApp = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    const loadMovies = async () => {
+    const loadMovies = useCallback(async () => {
         setLoading(true);
         const { movies: newMovies, error: fetchError } = await fetchMovies(query, currentPage);
         if (!fetchError) {
@@ -38,29 +39,29 @@ const MovieSearchApp = () => {
             if (currentPage === 1) setMovies([]);
         }
         setLoading(false);
-    };
+    }, [query, currentPage]);
 
-    const handleSearchSubmit = (e) => {
+    const handleSearchSubmit = useCallback((e) => {
         e.preventDefault();
         setMovies([]);
         setCurrentPage(1);
         setQuery(e.target.searchInput.value);
-    };
+    }, []);
 
-    const handleLoadMore = () => {
+    const handleLoadMore = useCallback(() => {
         if (!loading) setCurrentPage((prevPage) => prevPage + 1);
-    };
+    }, [loading]);
 
-    const showDetails = async (id) => {
+    const showDetails = useCallback(async (id) => {
         const movie = await fetchMovieDetails(id);
         if (movie) setModalMovie(movie);
-    };
+    }, []);
 
-    const closeModal = () => setModalMovie(null);
+    const closeModal = useCallback(() => setModalMovie(null), []);
 
-    const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    const scrollToTop = useCallback(() => window.scrollTo({ top: 0, behavior: 'smooth' }), []);
 
-    return <>
+    return (
         <div>
             <header>
                 <h1>Movie Search</h1>
@@ -70,13 +71,16 @@ const MovieSearchApp = () => {
                 {error && <p className="error-message">{error}</p>}
                 <MovieList movies={movies} onShowDetails={showDetails} />
                 {loading && <div className="loader" ref={loaderRef}></div>}
-                {modalMovie && <MovieModal movie={modalMovie} onClose={closeModal} />}
+                {modalMovie && (
+                    <Suspense fallback={<div>Загрузка...</div>}>
+                        <MovieModal movie={modalMovie} onClose={closeModal} />
+                    </Suspense>
+                )}
                 <Observer onLoadMore={handleLoadMore} />
                 {showBackToTop && <BackToTopButton onClick={scrollToTop} />}
             </main>
         </div>
-    </>
+    );
 };
 
 export default MovieSearchApp;
-

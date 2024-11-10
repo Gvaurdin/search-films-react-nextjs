@@ -2,25 +2,37 @@ import { useState, useEffect } from 'react';
 
 export default function BackgroundSlider() {
   const [index, setIndex] = useState(1);
+  const [loadedImage, setLoadedImage] = useState(null);
 
   useEffect(() => {
+    // функция для предварительной загрузки изображения
+    const preloadImage = (index) => {
+      const img = new Image();
+      img.src = `/images/background-${index}.jpg`;
+      img.onload = () => setLoadedImage(img.src);
+    };
+
+    // загрузка текущего изображения
+    preloadImage(index);
+
     const interval = setInterval(() => {
-      setIndex((prevIndex) => (prevIndex % 8) + 1);
+      const nextIndex = (index % 8) + 1;
+      setIndex(nextIndex);
+      preloadImage(nextIndex); // предварительная загрузка следующего изображения
     }, 15000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [index]);
 
-  const backgroundImage = `/images/background-${index}.jpg`;
-
-  return <>
+  return (
     <div
-      className='background'
+      className="background"
       style={{
-        backgroundImage: `url(${backgroundImage})`
+        backgroundImage: `url(${loadedImage})`,
+        transition: 'background-image 1s ease-in-out' // плавный переход
       }}
     >
     </div>
-  </>
+  );
 }
 
